@@ -69,6 +69,10 @@ tools = [
     "type": "file_search",
     "vector_store_ids": ["vs_6845194c70a481919e9647fda71efa50"],
     "max_num_results": 10
+},
+
+{
+    "type": "web_search_preview",
 }
 ]
 
@@ -107,6 +111,8 @@ def handle_query():
                 book_flight(flight_id, passenger_name)
                 confirmation = f"Booking successful for {passenger_name} on flight {flight_id}"
                 results.append({"tool": "book_flight", "result": confirmation})
+            
+
 
         # handle file search 
         elif tool_call.type == "file_search":
@@ -116,6 +122,15 @@ def handle_query():
                 results.append({"tool": "file_search", "result": file_text})
             else:
                 results.append({"tool": "file_search", "result": "No file search results found."})
+        
+        # handle web search preview
+        elif tool_call.type == "web_search_preview":
+            web_results = getattr(tool_call, "tool_call", None)
+            if web_results and isinstance(web_results, list):
+                web_text = "\n".json(str(item) for item in web_results)
+                results.append({"tool": "web_search_preview", "result": web_text})
+            else:
+                results.append({"tool": "web_search_preview", "result": "No web search results found."})
 
         # handle normal assistant message
         elif hasattr(tool_call, "content"):  
