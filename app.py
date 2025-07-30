@@ -5,6 +5,7 @@ from weather_utils import get_weather
 from db_utils import get_flights, format_flights, book_flight
 import os
 import json
+import logging
 
 load_dotenv()
 app = Flask(__name__)
@@ -82,9 +83,23 @@ def handle_query():
     user_query = request.json.get("query")
 
     response = client.responses.create(
-        model="gpt-4o-mini",
-        input= f"{user_query}",
-        tools=tools
+        model=os.getenv("OPENAI_MODEL"),
+        input=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a smart assistant with access to multiple tools:\n"
+                    "- Use `get_weather` for weather queries.\n"
+                    "- Use `get_flights` and `book_flight` for flight operations.\n"
+                    "- Use `file_search` if the user requests information from documents.\n"
+                    "- Use `web_search_preview` if the user asks about current events, news, or real-time data like sports scores.\n\n"
+                    "Use the most appropriate tool and return the result."
+                )
+            },
+            {"role": "user", "content": user_query}
+    ],
+        tools=tools,
+        tool_choice="auto"
     )
    
     
@@ -125,6 +140,7 @@ def handle_query():
         
         # handle web search preview
         elif tool_call.type == "web_search_preview":
+            logging.info(f"Tool call type: {tool_call.type}")
             web_results = getattr(tool_call, "tool_call", None)
             if web_results and isinstance(web_results, list):
                 web_text = "\n".json(str(item) for item in web_results)
@@ -134,6 +150,7 @@ def handle_query():
 
         # handle normal assistant message
         elif hasattr(tool_call, "content"):  
+            print("This is a normal assistant message")
             content = tool_call.content
             if isinstance(content, list) and len(content) > 0:
                 text = content[0].text
